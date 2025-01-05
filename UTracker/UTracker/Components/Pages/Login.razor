@@ -1,0 +1,52 @@
+﻿@page "/"
+@using UTracker.Models
+@inject UserService UserService
+@inject NavigationManager NavigationManager
+
+<h3>Login</h3>
+
+<div>
+    <label>Username:</label>
+    <input @bind="Username" placeholder="Enter username" />
+</div>
+<div>
+    <label>Password:</label>
+    <input @bind="Password" type="password" placeholder="Enter password" />
+</div>
+
+<button @onclick="LoginUser">Login</button>
+
+<p>Don't have an account? <a href="/register">Register</a></p>
+
+
+@if (ErrorMessage != null)
+{
+    <p style="color: red;">@ErrorMessage</p>
+}
+
+@code {
+    private string Username;
+    private string Password;
+    private string? ErrorMessage;
+
+    private async Task LoginUser()
+    {
+        try
+        {
+            var user = await UserService.GetUser(Username, Password);
+            if (user != null)
+            {
+                ErrorMessage = null;
+                NavigationManager.NavigateTo("/dashboard");
+            }
+            else
+            {
+                ErrorMessage = "Invalid username or password.";
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error: {ex.Message}";
+        }
+    }
+}

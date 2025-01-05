@@ -1,0 +1,34 @@
+﻿@inherits LayoutComponentBase
+@inject NavigationManager NavigationManager
+
+<div class="page">
+    @if (!IsLoginPage)
+    {
+        <div class="sidebar">
+            <NavMenu />
+        </div>
+    }
+
+    <main>
+        <div class="top-row px-4">
+            @if (!IsLoginPage)
+            {
+                <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+            }
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+@code {
+    private bool IsLoginPage => NavigationManager.Uri.EndsWith("/", StringComparison.OrdinalIgnoreCase) || NavigationManager.Uri.Contains("/register", StringComparison.OrdinalIgnoreCase); 
+
+    protected override void OnInitialized()
+    {
+        // Trigger re-render when the route changes
+        NavigationManager.LocationChanged += (s, e) => StateHasChanged();
+    }
+}

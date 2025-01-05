@@ -1,0 +1,135 @@
+﻿@page "/AddDebt"
+@using UTracker.Models
+@inject UserService UserService
+@inject NavigationManager NavigationManager
+
+<h3>Debt Summary</h3>
+@if (debts.Any())
+{
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Debt Source</th>
+                <th>Debt Amount</th>
+                <th>Cleared Amount</th>
+                <th>Due Date</th>
+                <th>Notes</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var debt in debts)
+            {
+                <tr>
+                    <td>@debt.DebtSource</td>
+                    <td>@debt.DebtAmount</td>
+                    <td>@debt.ClearedAmount</td>
+                    <td>@debt.DueDate.ToShortDateString()</td>
+                    <td>@debt.Notes</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>No debts available.</p>
+}
+
+<br>
+
+<h3>Add Debt</h3>
+
+<EditForm Model="@debt" OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="form-group">
+        <label for="debtSource">Debt Source</label>
+        <InputText id="debtSource" class="form-control" @bind-Value="debt.DebtSource" />
+    </div>
+
+    <div class="form-group">
+        <label for="debtAmount">Debt Amount</label>
+        <InputNumber id="debtAmount" class="form-control" @bind-Value="debt.DebtAmount" />
+    </div>
+
+    <div class="form-group">
+        <label for="clearedAmount">Cleared Amount</label>
+        <InputNumber id="clearedAmount" class="form-control" @bind-Value="debt.ClearedAmount" />
+    </div>
+
+    <div class="form-group">
+        <label for="dueDate">Due Date</label>
+        <InputDate id="dueDate" class="form-control" @bind-Value="debt.DueDate" />
+    </div>
+
+    <div class="form-group">
+        <label for="notes">Notes</label>
+        <InputTextArea id="notes" class="form-control" @bind-Value="debt.Notes" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Add Debt</button>
+    <button type="button" class="btn btn-secondary" @onclick="ResetForm">Reset</button>
+</EditForm>
+
+<hr />
+
+<h3>Debt Calculations</h3>
+<p>Total Debt: @TotalDebt.ToString("C")</p>
+<p>Total Cleared Debt: @TotalClearedDebt.ToString("C")</p>
+<p>Remaining Debt: @RemainingDebt.ToString("C")</p>
+
+@code {
+    private AddDebt debt = new AddDebt();
+    private List<AddDebt> debts = new List<AddDebt>();
+    private string errorMessage = string.Empty;
+
+    // Calculated values
+    private decimal TotalDebt => debts.Sum(d => d.DebtAmount);
+    private decimal TotalClearedDebt => debts.Sum(d => d.ClearedAmount);
+    private decimal RemainingDebt => TotalDebt - TotalClearedDebt;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await LoadDebts();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error has occurred: {ex.Message}";
+            Console.WriteLine(ex); // Log the error for debugging
+        }
+    }
+
+    private async Task LoadDebts()
+    {
+        debts = await UserService.GetAllDebts();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            await UserService.AddDebt(debt);
+            await LoadDebts();
+            debt = new AddDebt();
+            await DisplaySuccessMessage("Debt successfully added!");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error has occurred: {ex.Message}";
+            Console.WriteLine(ex); // Log the error for debugging
+        }
+    }
+
+    private async Task DisplaySuccessMessage(string message)
+    {
+        await Task.Run(() => Console.WriteLine(message)); // Simulate pop-up for now
+    }
+
+    private void ResetForm()
+    {
+        debt = new AddDebt();
+    }
+}
