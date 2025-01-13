@@ -1,5 +1,141 @@
-﻿@page "/dashboard"
+@page "/dashboard"
+@using UTracker.Models
+@inject UserService UserService
 
-<h3>Dashboard</h3>
-<p>Welcome! You have successfully logged in.</p>
-<a href="/login">Logout</a>
+<div class="dashboard">
+    <div class="dashboard-box">
+        <h2>@TotalCashInflows.ToString("C")</h2>
+        <p>Total Cash Inflows</p>
+    </div>
+    <div class="dashboard-box">
+        <h2>@TotalCashOutflows.ToString("C")</h2>
+        <p>Total Cash Outflows</p>
+    </div>
+    <div class="dashboard-box">
+        <h2>@ClearedDebt.ToString("C")</h2>
+        <p>Cleared Debts</p>
+    </div>
+    <div class="dashboard-box">
+        <h2>@RemainingBalance.ToString("C")</h2>
+        <p>Remaining Balance</p>
+    </div>
+</div>
+
+<!-- Debt Summary Section -->
+<div class="debt-summary">
+    <h3>Debt Summary</h3>
+    @if (debts.Any())
+    {
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Debt Source</th>
+                    <th>Debt Amount</th>
+                    <th>Cleared Amount</th>
+                    <th>Due Date</th>
+                    <th>Notes</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var debt in debts)
+                {
+                    <tr>
+                        <td>@debt.DebtSource</td>
+                        <td>@debt.DebtAmount.ToString("C")</td>
+                        <td>@debt.ClearedAmount.ToString("C")</td>
+                        <td>@debt.DueDate.ToShortDateString()</td>
+                        <td>@debt.Notes</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else
+    {
+        <p>No debts available.</p>
+    }
+</div>
+
+<!-- Top 5 Transactions Section -->
+<div class="top-transactions">
+    <h3>Top 5 Transactions</h3>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Amount</th>
+                <th>Date</th>
+                <th>Transaction Type</th>
+                <th>Notes</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var transaction in Top5Transactions)
+            {
+                <tr>
+                    <td>@transaction.Amount.ToString("C")</td>
+                    <td>@transaction.Date.ToShortDateString()</td>
+                    <td>@transaction.TransactionType</td>
+                    <td>@transaction.Notes</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+
+@code {
+    private decimal TotalCashInflows = 0;
+    private decimal TotalCashOutflows = 0;
+    private decimal ClearedDebt = 0;
+    private decimal RemainingBalance => TotalCashInflows - TotalCashOutflows - ClearedDebt;
+    private List<AddTransaction> transactions = new();
+    private List<AddDebt> debts = new();
+    private List<AddTransaction> Top5Transactions = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTransactions();
+        await LoadDebts();
+        CalculateTotals();
+        GetTop5Transactions();
+    }
+
+    private async Task LoadTransactions()
+    {
+        transactions = await UserService.GetAllTransactions();
+    }
+
+    private async Task LoadDebts()
+    {
+        debts = await UserService.GetAllDebts();
+    }
+
+    private void CalculateTotals()
+    {
+        // Calculate totals
+        TotalCashInflows = transactions.Where(t => t.TransactionType == "Credit").Sum(t => t.Amount);
+        TotalCashOutflows = transactions.Where(t => t.TransactionType == "Debit").Sum(t => t.Amount);
+        ClearedDebt = debts.Sum(d => d.ClearedAmount);
+    }
+
+    private void GetTop5Transactions()
+    {
+        // Get the 5 highest inflows
+        var highestInflows = transactions.Where(t => t.TransactionType == "Credit")
+                                          .OrderByDescending(t => t.Amount)
+                                          .Take(5)
+                                          .ToList();
+
+        // Get the 5 lowest outflows
+        var lowestOutflows = transactions.Where(t => t.TransactionType == "Debit")
+                                         .OrderBy(t => t.Amount)
+                                         .Take(5)
+                                         .ToList();
+
+        // Combine both highest inflows and lowest outflows and take top 5
+        Top5Transactions = highestInflows.Concat(lowestOutflows)
+                                         .OrderByDescending(t => t.Amount)
+                                         .Take(5)
+                                         .ToList();
+    }
+}
