@@ -1,11 +1,55 @@
-﻿@page "/AddTransaction"
+@page "/AddTransaction"
 @using UTracker.Models
 @inject UserService UserService
 @inject NavigationManager NavigationManager
 
+<h3>Filter Transactions</h3>
+<div class="row">
+    <div class="col-md-3">
+        <label for="filterTransactionType">Transaction Type</label>
+        <InputSelect id="filterTransactionType" class="form-control" @bind-Value="filterTransactionType">
+            <option value="">All</option>
+            <option value="Debit">Debit</option>
+            <option value="Credit">Credit</option>
+        </InputSelect>
+    </div>
+
+    <div class="col-md-3">
+        <label for="filterCategory">Category</label>
+        <InputSelect id="filterCategory" class="form-control" @bind-Value="filterCategory">
+            <option value="">All</option>
+            <option value="Monthly">Monthly</option>
+            <option value="Salary">Salary</option>
+            <option value="Rent">Rent</option>
+            <option value="Groceries">Groceries</option>
+            <option value="Self-care">Self-care</option>
+            <option value="Other">Other</option>
+        </InputSelect>
+    </div>
+
+    <div class="col-md-3">
+        <label for="filterTitle">Sort by Title</label>
+        <InputSelect id="filterTitle" class="form-control" @bind-Value="filterTitleOrder">
+            <option value="Ascending">Ascending</option>
+            <option value="Descending">Descending</option>
+        </InputSelect>
+    </div>
+
+    <div class="col-md-3">
+        <label for="filterDateRange">Date Range</label>
+        <div class="d-flex">
+            <InputDate id="filterStartDate" class="form-control me-2" @bind-Value="filterStartDate" />
+            <InputDate id="filterEndDate" class="form-control" @bind-Value="filterEndDate" />
+        </div>
+    </div>
+</div>
+<button class="btn btn-primary mt-3" @onclick="ApplyFilters">Apply Filters</button>
+<button class="btn btn-secondary mt-3 ms-2" @onclick="ClearFilters">Clear Filters</button>
+
+<hr />
 
 <h3>Transaction Summary</h3>
-@if (transactions.Any())
+@if (filteredTransactions.Any())
 {
     <table class="table table-bordered">
         <thead>
@@ -19,7 +63,7 @@
             </tr>
         </thead>
         <tbody>
-            @foreach (var trans in transactions)
+            @foreach (var trans in filteredTransactions)
             {
                 <tr class="@GetTransactionRowClass(trans.TransactionType)">
                     <td>@trans.Title</td>
@@ -38,11 +82,8 @@ else
     <p>No transactions available.</p>
 }
 
-<br>
-
 <h3>Add Transaction</h3>
 
-<!-- Success/Error message display -->
 <div class="alert alert-success" style="display:@(string.IsNullOrEmpty(successMessage) ? "none" : "block")">
     @successMessage
 </div>
@@ -105,21 +146,21 @@ else
 
 <hr />
 
-
-
 @code {
+    private string filterTransactionType = string.Empty;
+    private string filterCategory = string.Empty;
+    private string filterTitleOrder = "Ascending";
+    private DateTime? filterStartDate = null;
+    private DateTime? filterEndDate = null;
 
-    private AddTransaction transaction = new AddTransaction();
     private List<AddTransaction> transactions = new();
+    private List<AddTransaction> filteredTransactions = new();
 
-    private decimal totalCashInflow = 0;
-    private decimal totalCashOutflow = 0;
+    private string successMessage = string.Empty;
+    private string errorMessage = string.Empty;
 
-    private void CalculateTotals()
-    {
-        totalCashInflow = transactions.Where(t => t.TransactionType == "Credit").Sum(t => t.Amount);
-        totalCashOutflow = transactions.Where(t => t.TransactionType == "Debit").Sum(t => t.Amount);
-    }
+    private decimal totalCredit = 0;
+    private decimal totalDebit = 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -129,32 +170,50 @@ else
     private async Task LoadTransactions()
     {
         transactions = await UserService.GetAllTransactions();
+        CalculateTotals();
+        ApplyFilters();
     }
 
+    private void ApplyFilters()
+    {
+        filteredTransactions = transactions
+            .Where(t =>
+                (string.IsNullOrEmpty(filterTransactionType) || t.TransactionType == filterTransactionType) &&
+                (string.IsNullOrEmpty(filterCategory) || t.Category == filterCategory) &&
+                (!filterStartDate.HasValue || t.Date >= filterStartDate.Value) &&
+                (!filterEndDate.HasValue || t.Date <= filterEndDate.Value))
+            .ToList();
 
-    //debit and credit initialization
-    private decimal totalCredit = 0;  
-    private decimal totalDebit = 0;   
+        filteredTransactions = filterTitleOrder switch
+        {
+            "Ascending" => filteredTransactions.OrderBy(t => t.Title).ToList(),
+            "Descending" => filteredTransactions.OrderByDescending(t => t.Title).ToList(),
+            _ => filteredTransactions
+        };
+    }
 
+    private void ClearFilters()
+    {
+        filterTransactionType = string.Empty;
+        filterCategory = string.Empty;
+        filterTitleOrder = "Ascending";
+        filterStartDate = null;
+        filterEndDate = null;
+        ApplyFilters();
+    }
 
-    // submit validation
     private async Task HandleValidSubmit()
     {
-        if (transaction.TransactionType == "Debit")
+        if (transaction.TransactionType == "Debit" && transaction.Amount > totalCredit)
         {
-            // Validate if debit exceeds total credit
-            if (transaction.Amount > totalCredit)
-            {
-                await DisplayErrorMessage("Error: Debit amount exceeds available credit.");
-                return; // Prevent the transaction from being added
-            }
+            await DisplayErrorMessage("Error: Debit amount exceeds available credit.");
+            return;
+        }
 
-            totalDebit += transaction.Amount; // Add to total debit
-        }
+        if (transaction.TransactionType == "Debit")
+            totalDebit += transaction.Amount;
         else if (transaction.TransactionType == "Credit")
-        {
-            totalCredit += transaction.Amount; // Add to total credit
-        }
+            totalCredit += transaction.Amount;
 
         await UserService.AddTransaction(transaction);
         await LoadTransactions();
@@ -162,45 +221,18 @@ else
         await DisplaySuccessMessage("Transaction successfully added!");
     }
 
-    // success and error message inintialization
-    private string successMessage = string.Empty;
-    private string errorMessage = string.Empty;
-    
-    //success message  handling
-    private async Task DisplaySuccessMessage(string message)
-    {
-        successMessage = message;
-        StateHasChanged();
-        await Task.Delay(3000); // Show for 3 seconds
-        successMessage = string.Empty;
-        StateHasChanged();
-    }
-
-    // error message handling
-    private async Task DisplayErrorMessage(string message)
-    {
-        errorMessage = message;
-        StateHasChanged();
-        await Task.Delay(3000); // Show for 3 seconds
-        errorMessage = string.Empty;
-        StateHasChanged();
-    }
-
-
-    //form reset validation
     private void ResetForm()
     {
         transaction = new AddTransaction();
     }
 
-    // transaction deletion
     private async Task DeleteAllTransactions()
     {
         var result = await UserService.DeleteAllTransactions();
         if (result > 0)
         {
             await DisplaySuccessMessage("All transactions have been deleted!");
-            await LoadTransactions(); // Reload the transaction list after deletion
+            await LoadTransactions();
         }
         else
         {
@@ -208,14 +240,40 @@ else
         }
     }
 
-    private string GetTransactionRowClass(string transactionType)
+    private string GetTransactionRowClass(string transactionType) =>
+        transactionType switch
+        {
+            "Debit" => "table-danger",
+            "Credit" => "table-success",
+            _ => ""
+        };
+
+    private async Task DisplaySuccessMessage(string message)
     {
-        if (transactionType == "Debit")
-            return "table-danger"; // Bootstrap class for red (danger)
-        else if (transactionType == "Credit")
-            return "table-success"; // Bootstrap class for green (success)
-        return "";
+        successMessage = message;
+        StateHasChanged();
+        await Task.Delay(3000);
+        successMessage = string.Empty;
+        StateHasChanged();
     }
 
+    private async Task DisplayErrorMessage(string message)
+    {
+        errorMessage = message;
+        StateHasChanged();
+        await Task.Delay(3000);
+        errorMessage = string.Empty;
+        StateHasChanged();
+    }
 
-} 
+    private void CalculateTotals()
+    {
+        totalCredit = transactions.Where(t => t.TransactionType == "Credit").Sum(t => t.Amount);
+        totalDebit = transactions.Where(t => t.TransactionType == "Debit").Sum(t => t.Amount);
+    }
+
+    private AddTransaction transaction = new AddTransaction();
+}
+
+
+
