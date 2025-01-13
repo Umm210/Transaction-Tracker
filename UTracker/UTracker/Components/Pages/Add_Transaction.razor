@@ -3,6 +3,12 @@
 @inject UserService UserService
 @inject NavigationManager NavigationManager
 
+<!-- Search Bar -->
+<div class="form-group">
+    <label for="search">Search Transactions</label>
+    <InputText id="search" class="form-control" @bind-Value="SearchTerm" />
+</div>
+
 <h3>Filter Transactions</h3>
 <div class="row">
     <div class="col-md-3">
@@ -152,15 +158,36 @@ else
     private string filterTitleOrder = "Ascending";
     private DateTime? filterStartDate = null;
     private DateTime? filterEndDate = null;
-
     private List<AddTransaction> transactions = new();
     private List<AddTransaction> filteredTransactions = new();
-
     private string successMessage = string.Empty;
     private string errorMessage = string.Empty;
-
     private decimal totalCredit = 0;
     private decimal totalDebit = 0;
+    private string searchTerm;
+    private string SearchTerm
+    {
+        get => searchTerm;
+        set
+        {
+            searchTerm = value;
+            FilterTransactions();
+        }
+    }
+
+    private void FilterTransactions()
+    {
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            filteredTransactions = new List<AddTransaction>(transactions); // Show all transactions
+        }
+        else
+        {
+            filteredTransactions = transactions
+                .Where(t => t.Title != null && t.Title.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
