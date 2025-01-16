@@ -3,7 +3,29 @@
 @inject UserService UserService
 @inject NavigationManager NavigationManager
 
-<h3>Debt Summary</h3>
+<!-- Debt Amounts -->
+<h3>Debt</h3>
+<div class="dashboard-box">
+    <h2>@TotalBalance.ToString("C")</h2>
+    <p>Total Balance</p>
+</div>
+<div class="dashboard-box">
+    <h2>@TotalDebt.ToString("C")</h2>
+    <p>Total Debt</p>
+</div>
+<div class="dashboard-box">
+    <h2>@TotalClearedDebt.ToString("C")</h2>
+    <p>Total Cleared Debt</p>
+</div>
+<div class="dashboard-box">
+    <h2>@RemainingDebt.ToString("C")</h2>
+    <p>Remaining Debt</p>
+</div>
+
+<!-- Debt History -->
+<h3>Debt History</h3>
+
+<!-- Pending Debts -->
 @if (debts.Any())
 {
     <table class="table table-bordered">
@@ -25,6 +47,9 @@
                     <td>@debt.ClearedAmount</td>
                     <td>@debt.DueDate.ToShortDateString()</td>
                     <td>@debt.Notes</td>
+                    <td>
+                        <button class="btn btn-success" @onclick="() => ClearDebt(debt)">Clear Debt</button>
+                    </td>
                 </tr>
             }
         </tbody>
@@ -37,74 +62,83 @@ else
 
 <br>
 
+<!-- Cleared Debts -->
+<h4>Cleared Debt</h4>
+
+<!-- Add Debt -->
 <h3>Add Debt</h3>
 
 <EditForm Model="@debt" OnValidSubmit="HandleValidSubmit">
     <DataAnnotationsValidator />
     <ValidationSummary />
 
+    <!-- Source-->
     <div class="form-group">
         <label for="debtSource">Debt Source</label>
         <InputText id="debtSource" class="form-control" @bind-Value="debt.DebtSource" />
     </div>
 
+    <!-- Amount -->
     <div class="form-group">
         <label for="debtAmount">Debt Amount</label>
         <InputNumber id="debtAmount" class="form-control" @bind-Value="debt.DebtAmount" />
     </div>
 
+    <!-- Cleared Debt Amount -->
     <div class="form-group">
         <label for="clearedAmount">Cleared Amount</label>
         <InputNumber id="clearedAmount" class="form-control" @bind-Value="debt.ClearedAmount" />
     </div>
 
+    <!-- Due Date -->
     <div class="form-group">
         <label for="dueDate">Due Date</label>
         <InputDate id="dueDate" class="form-control" @bind-Value="debt.DueDate" />
     </div>
 
+    <!-- Notes -->
     <div class="form-group">
         <label for="notes">Notes</label>
         <InputTextArea id="notes" class="form-control" @bind-Value="debt.Notes" />
     </div>
 
-    <button type="submit" class="btn btn-primary">Add Debt</button>
-    <button type="button" class="btn btn-secondary" @onclick="ResetForm">Reset</button>
+    <button type="submit" class="btn btn-primary">Add Debt</button> <!-- Submit Button -->
+    <button type="button" class="btn btn-secondary" @onclick="ResetForm">Reset</button> <!-- Reset Button -->
 </EditForm>
 
 <hr />
 
-<h3>Debt Calculations</h3>
-<p>Total Debt: @TotalDebt.ToString("C")</p>
-<p>Total Cleared Debt: @TotalClearedDebt.ToString("C")</p>
-<p>Remaining Debt: @RemainingDebt.ToString("C")</p>
-
 @code {
     private AddDebt debt = new AddDebt();
     private List<AddDebt> debts = new List<AddDebt>();
+    private List<TransactionsDB> transactions = new();
     private string errorMessage = string.Empty;
 
-    // Calculated values
+    // Amount Calculations
     private decimal TotalDebt => debts.Sum(d => d.DebtAmount);
     private decimal TotalClearedDebt => debts.Sum(d => d.ClearedAmount);
     private decimal RemainingDebt => TotalDebt - TotalClearedDebt;
+    private decimal TotalInflow = 0;
+    private decimal TotalOutflow = 0;
+    private decimal TotalBalance => TotalInflow - TotalOutflow;
 
     protected override async Task OnInitializedAsync()
     {
-        try
-        {
-            await LoadDebts();
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"An error has occurred: {ex.Message}";
-            Console.WriteLine(ex); // Log the error for debugging
-        }
+    await LoadTransactions();
+    await LoadDebts();
+    CalculateTotals();
     }
 
+    // Load Debts
     private async Task LoadDebts()
     {
         debts = await UserService.GetAllDebts();
+    }
+
+    // Load Transactions
+    private async Task LoadTransactions()
+    {
+        transactions = await UserService.GetAllTransactions();
     }
 
     private async Task HandleValidSubmit()
@@ -123,13 +157,59 @@ else
         }
     }
 
+    // Clear Debt
+    private async Task ClearDebt(DebtDB debtToClear)
+    {
+        // Calculate the amount needed to clear the debt
+        var amountToClear = debtToClear.DebtAmount - debtToClear.ClearedAmount;
+    
+        // Validate if there's enough balance
+        if (amountToClear > TotalBalance)
+        {
+            errorMessage = "Debt cannot be cleared. Not enough credit.";
+            return;
+        }
+    
+        try
+        {
+            // Update the ClearedAmount of the debt
+            debtToClear.ClearedAmount += amountToClear;
+    
+            // Simulate updating the debt in the backend
+            await UserService.UpdateDebt(debtToClear);
+    
+            // Reload debts to reflect the changes
+            await LoadDebts();
+    
+            // Recalculate totals
+            CalculateTotals();
+    
+            // Display success message
+            await DisplaySuccessMessage("Debt successfully cleared!");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred while clearing debt: {ex.Message}";
+            Console.WriteLine(ex); // Log for debugging
+        }
+    }
+
+    // Display Sucess Message
     private async Task DisplaySuccessMessage(string message)
     {
         await Task.Run(() => Console.WriteLine(message)); // Simulate pop-up for now
     }
 
+    // Reset Debt Form
     private void ResetForm()
     {
         debt = new AddDebt();
+    }
+
+    // Calculate Totals
+    private void CalculateTotals()
+    {
+        TotalInflow = transactions.Where(t => t.TransactionType == "Credit").Sum(t => t.Amount);
+        TotalOutflow = transactions.Where(t => t.TransactionType == "Debit").Sum(t => t.Amount);
     }
 }
