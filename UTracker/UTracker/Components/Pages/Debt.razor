@@ -1,54 +1,107 @@
-﻿@page "/AddDebt"
+@page "/Transaction"
 @using UTracker.Models
 @inject UserService UserService
 @inject NavigationManager NavigationManager
 
-<!-- Debt Amounts -->
-<h3>Debt</h3>
-<div class="dashboard-box">
-    <h2>@TotalBalance.ToString("C")</h2>
-    <p>Total Balance</p>
-</div>
-<div class="dashboard-box">
-    <h2>@TotalDebt.ToString("C")</h2>
-    <p>Total Debt</p>
-</div>
-<div class="dashboard-box">
-    <h2>@TotalClearedDebt.ToString("C")</h2>
-    <p>Total Cleared Debt</p>
-</div>
-<div class="dashboard-box">
-    <h2>@RemainingDebt.ToString("C")</h2>
-    <p>Remaining Debt</p>
+<!-- Transaction Amounts -->
+<div class="calculations">
+    <div class="dashboard-box">
+        <h2>@TotalBalance.ToString("C")</h2> <!-- Total Balance -->
+        <p>Total Balance</p>
+    </div>
+    <div class="dashboard-box">
+        <h2>@TotalInflow.ToString("C")</h2> <!-- Total Inflow -->
+        <p>Total Inflow</p>
+    </div>
+    <div class="dashboard-box">
+        <h2>@TotalOutflow.ToString("C")</h2> <!-- Total Outflow -->
+        <p>Total Outflow</p>
+    </div>
 </div>
 
-<!-- Debt History -->
-<h3>Debt History</h3>
+<!-- Search Bar -->
+<div class="form-group">
+    <label for="search">Search Transactions</label>
+    <InputText id="search" class="form-control" @bind-Value="SearchTerm" />
+</div>
 
-<!-- Pending Debts -->
-@if (debts.Any())
+<!-- Filter -->
+<h3>Filter Transactions</h3>
+<div class="row">
+    <!-- Type -->
+    <div class="col-md-3">
+        <label for="filterTransactionType">Transaction Type</label>
+        <InputSelect id="filterTransactionType" class="form-control" @bind-Value="filterTransactionType">
+            <option value="">All</option>
+            <option value="Debit">Debit</option>
+            <option value="Credit">Credit</option>
+        </InputSelect>
+    </div>
+
+    <!-- Tag -->
+    <div class="col-md-3">
+        <label for="filterTag">Tag</label>
+        <InputSelect id="filterTag" class="form-control" @bind-Value="filterTag">
+            <option value="">All</option>
+            <option value="Monthly">Monthly</option>
+            <option value="Salary">Salary</option>
+            <option value="Rent">Rent</option>
+            <option value="Groceries">Groceries</option>
+            <option value="Self-care">Self-care</option>
+            <option value="Other">Other</option>
+        </InputSelect>
+    </div>
+
+    <!-- Sort by title -->
+    <div class="col-md-3">
+        <label for="filterTitle">Sort by Title</label>
+        <InputSelect id="filterTitle" class="form-control" @bind-Value="filterTitleOrder">
+            <option value="Ascending">Ascending</option>
+            <option value="Descending">Descending</option>
+        </InputSelect>
+    </div>
+
+    <!-- Date Range -->
+    <div class="col-md-3">
+        <label for="filterDateRange">Date Range</label>
+        <div class="d-flex">
+            <InputDate id="filterStartDate" class="form-control me-2" @bind-Value="filterStartDate" />
+            <InputDate id="filterEndDate" class="form-control" @bind-Value="filterEndDate" />
+        </div>
+    </div>
+</div>
+<button class="btn btn-primary mt-3" @onclick="ApplyFilters">Apply Filters</button> <!-- Filter button -->
+<button class="btn btn-secondary mt-3 ms-2" @onclick="ClearFilters">Clear Filters</button> <!-- Clear filter button -->
+
+<hr />
+
+<!-- Transaction History -->
+<h3>Transaction History</h3>
+@if (filteredTransactions.Any())
 {
     <table class="table table-bordered">
         <thead>
             <tr>
-                <th>Debt Source</th>
-                <th>Debt Amount</th>
-                <th>Cleared Amount</th>
-                <th>Due Date</th>
+                <th>Title</th>
+                <th>Transaction Type</th>
+                <th>Amount</th>
+                <th>Date</th>
+                <th>Category</th>
                 <th>Notes</th>
             </tr>
         </thead>
         <tbody>
-            @foreach (var debt in debts)
+            @foreach (var trans in filteredTransactions)
             {
-                <tr>
-                    <td>@debt.DebtSource</td>
-                    <td>@debt.DebtAmount</td>
-                    <td>@debt.ClearedAmount</td>
-                    <td>@debt.DueDate.ToShortDateString()</td>
-                    <td>@debt.Notes</td>
+                <tr class="@GetTransactionRowClass(trans.TransactionType)">
+                    <td>@trans.Title</td>
+                    <td>@trans.TransactionType</td>
+                    <td>@trans.Amount</td>
+                    <td>@trans.Date.ToShortDateString()</td>
+                    <td>@trans.Category</td>
+                    <td>@trans.Notes</td>
                     <td>
-                        <button class="btn btn-success" @onclick="() => ClearDebt(debt)">Clear Debt</button>
+                        <button class="btn btn-danger" @onclick="() => DeleteTransaction(trans)">Delete</button>
                     </td>
                 </tr>
             }
@@ -57,156 +110,266 @@
 }
 else
 {
-    <p>No debts available.</p>
+    <p>No transactions available.</p>
 }
 
-<br>
+<!-- Add Transactions -->
+<h3>Add Transaction</h3>
 
-<!-- Cleared Debts -->
-<h4>Cleared Debt</h4>
+<div class="alert alert-success" style="display:@(string.IsNullOrEmpty(successMessage) ? "none" : "block")">
+    @successMessage
+</div>
 
-<!-- Add Debt -->
-<h3>Add Debt</h3>
+<div class="alert alert-danger" style="display:@(string.IsNullOrEmpty(errorMessage) ? "none" : "block")">
+    @errorMessage
+</div>
 
-<EditForm Model="@debt" OnValidSubmit="HandleValidSubmit">
+<EditForm Model="@transaction" OnValidSubmit="HandleValidSubmit">
     <DataAnnotationsValidator />
     <ValidationSummary />
 
-    <!-- Source-->
+    <!-- Title -->
     <div class="form-group">
-        <label for="debtSource">Debt Source</label>
-        <InputText id="debtSource" class="form-control" @bind-Value="debt.DebtSource" />
+        <label for="title">Title</label>
+        <InputText id="title" class="form-control" @bind-Value="transaction.Title" />
+    </div>
+
+    <!-- Type -->
+    <div class="form-group">
+        <label for="transactionType">Transaction Type</label>
+        <InputSelect id="transactionType" class="form-control" @bind-Value="transaction.TransactionType">
+            <option value="Type Option">Select Transaction Type</option>
+            <option value="Debit">Debit</option>
+            <option value="Credit">Credit</option>
+        </InputSelect>
     </div>
 
     <!-- Amount -->
     <div class="form-group">
-        <label for="debtAmount">Debt Amount</label>
-        <InputNumber id="debtAmount" class="form-control" @bind-Value="debt.DebtAmount" />
+        <label for="amount">Amount</label>
+        <InputNumber id="amount" class="form-control" @bind-Value="transaction.Amount" />
     </div>
 
-    <!-- Cleared Debt Amount -->
+    <!-- Date -->
     <div class="form-group">
-        <label for="clearedAmount">Cleared Amount</label>
-        <InputNumber id="clearedAmount" class="form-control" @bind-Value="debt.ClearedAmount" />
+        <label for="date">Date</label>
+        <InputDate id="date" class="form-control" @bind-Value="transaction.Date" />
     </div>
 
-    <!-- Due Date -->
+    <!-- Tag -->
     <div class="form-group">
-        <label for="dueDate">Due Date</label>
-        <InputDate id="dueDate" class="form-control" @bind-Value="debt.DueDate" />
+        <label for="tag">Tag</label>
+        <InputSelect id="category" class="form-control" @bind-Value="transaction.Category">
+            <option value="Tag">Tag</option>
+            <option value="Monthly">Monthly</option>
+            <option value="Salary">Salary</option>
+            <option value="Rent">Rent</option>
+            <option value="Groceries">Groceries</option>
+            <option value="Self-care">Self-care</option>
+            <option value="Other">Other</option>
+        </InputSelect>
     </div>
 
     <!-- Notes -->
     <div class="form-group">
         <label for="notes">Notes</label>
-        <InputTextArea id="notes" class="form-control" @bind-Value="debt.Notes" />
+        <InputTextArea id="notes" class="form-control" @bind-Value="transaction.Notes" />
     </div>
 
-    <button type="submit" class="btn btn-primary">Add Debt</button> <!-- Submit Button -->
-    <button type="button" class="btn btn-secondary" @onclick="ResetForm">Reset</button> <!-- Reset Button -->
+    <!-- Buttons -->
+    <button type="submit" class="btn btn-primary">Add Transaction</button>
+    <button type="button" class="btn btn-secondary" @onclick="ResetForm">Reset</button>
+    <button type="button" class="btn btn-danger" @onclick="DeleteAllTransactions">Delete All Transactions</button>
+
 </EditForm>
 
 <hr />
 
 @code {
-    private AddDebt debt = new AddDebt();
-    private List<AddDebt> debts = new List<AddDebt>();
+    private string filterTransactionType = string.Empty;
+    private string filterTag = string.Empty;
+    private string filterTitleOrder = "Ascending";
+    private DateTime? filterStartDate = null;
+    private DateTime? filterEndDate = null;
     private List<TransactionsDB> transactions = new();
+    private List<TransactionsDB> filteredTransactions = new();
+    private TransactionsDB transaction = new TransactionsDB();
+    private string successMessage = string.Empty;
     private string errorMessage = string.Empty;
 
-    // Amount Calculations
-    private decimal TotalDebt => debts.Sum(d => d.DebtAmount);
-    private decimal TotalClearedDebt => debts.Sum(d => d.ClearedAmount);
-    private decimal RemainingDebt => TotalDebt - TotalClearedDebt;
     private decimal TotalInflow = 0;
     private decimal TotalOutflow = 0;
     private decimal TotalBalance => TotalInflow - TotalOutflow;
 
-    protected override async Task OnInitializedAsync()
+    private string searchTerm;
+
+    // Search Bar Filtering
+    private string SearchTerm
     {
-    await LoadTransactions();
-    await LoadDebts();
-    CalculateTotals();
+        get => searchTerm;
+        set
+        {
+            searchTerm = value;
+            FilterTransactions();
+        }
     }
 
-    // Load Debts
-    private async Task LoadDebts()
+    // Transaction Filtering
+    private void FilterTransactions()
     {
-        debts = await UserService.GetAllDebts();
+        if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            filteredTransactions = new List<TransactionsDB>(transactions); // Show all transactions
+        }
+        else
+        {
+            filteredTransactions = transactions
+                .Where(t => t.Title != null && t.Title.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
     }
 
     // Load Transactions
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTransactions();
+    }
+
+    // Calculationg totals and applying filters
     private async Task LoadTransactions()
     {
         transactions = await UserService.GetAllTransactions();
+        CalculateTotals();
+        ApplyFilters();
     }
 
+    // Apply Filters
+    private void ApplyFilters()
+    {
+        filteredTransactions = transactions
+            .Where(t =>
+                (string.IsNullOrEmpty(filterTransactionType) || t.TransactionType == filterTransactionType) &&
+                (string.IsNullOrEmpty(filterTag) || t.Category == filterTag) &&
+                (!filterStartDate.HasValue || t.Date >= filterStartDate.Value) &&
+                (!filterEndDate.HasValue || t.Date <= filterEndDate.Value))
+            .ToList();
+
+        filteredTransactions = filterTitleOrder switch
+        {
+            "Ascending" => filteredTransactions.OrderBy(t => t.Title).ToList(),
+            "Descending" => filteredTransactions.OrderByDescending(t => t.Title).ToList(),
+            _ => filteredTransactions
+        };
+    }
+
+    // Clear Filters
+    private void ClearFilters()
+    {
+        filterTransactionType = string.Empty;
+        filterTag = string.Empty;
+        filterTitleOrder = "Ascending";
+        filterStartDate = null;
+        filterEndDate = null;
+        ApplyFilters();
+    }
+
+    // Handle Submits
     private async Task HandleValidSubmit()
     {
+        if (transaction.TransactionType == "Debit" && transaction.Amount > TotalInflow)
+        {
+            await DisplayErrorMessage("Error: Debit amount exceeds available credit.");
+            return;
+        }
+
+        if (transaction.TransactionType == "Debit")
+            TotalOutflow += transaction.Amount;
+        else if (transaction.TransactionType == "Credit")
+            TotalInflow += transaction.Amount;
+
+        await UserService.AddTransaction(transaction);
+        await LoadTransactions();
+        transaction = new TransactionsDB();
+        await DisplaySuccessMessage("Transaction successfully added!");
+    }
+
+    // Reset Form
+    private void ResetForm()
+    {
+        transaction = new TransactionsDB();
+    }
+
+    // Delete Single Transaction
+    private async Task DeleteTransaction(TransactionsDB transaction)
+    {
         try
         {
-            await UserService.AddDebt(debt);
-            await LoadDebts();
-            debt = new AddDebt();
-            await DisplaySuccessMessage("Debt successfully added!");
+            var result = await UserService.DeleteTransaction(transaction); // Delete from database
+
+            if (result > 0) // Check if the deletion was successful
+            {
+                transactions.Remove(transaction);
+                filteredTransactions.Remove(transaction); // Remove from the filtered list
+                CalculateTotals(); // Update totals after deletion
+                await DisplaySuccessMessage("Transaction deleted successfully!");
+            }
+            else
+            {
+                await DisplayErrorMessage("Transaction could not be deleted.");
+            }
         }
         catch (Exception ex)
         {
-            errorMessage = $"An error has occurred: {ex.Message}";
-            Console.WriteLine(ex); // Log the error for debugging
+            await DisplayErrorMessage($"Failed to delete transaction: {ex.Message}");
+            Console.WriteLine($"Exception: {ex}");
         }
     }
 
-    // Clear Debt
-    private async Task ClearDebt(DebtDB debtToClear)
+    // Delete all transactions
+    private async Task DeleteAllTransactions()
     {
-        // Calculate the amount needed to clear the debt
-        var amountToClear = debtToClear.DebtAmount - debtToClear.ClearedAmount;
-    
-        // Validate if there's enough balance
-        if (amountToClear > TotalBalance)
+        var result = await UserService.DeleteAllTransactions();
+        if (result > 0)
         {
-            errorMessage = "Debt cannot be cleared. Not enough credit.";
-            return;
+            await DisplaySuccessMessage("All transactions have been deleted!");
+            await LoadTransactions();
         }
-    
-        try
+        else
         {
-            // Update the ClearedAmount of the debt
-            debtToClear.ClearedAmount += amountToClear;
-    
-            // Simulate updating the debt in the backend
-            await UserService.UpdateDebt(debtToClear);
-    
-            // Reload debts to reflect the changes
-            await LoadDebts();
-    
-            // Recalculate totals
-            CalculateTotals();
-    
-            // Display success message
-            await DisplaySuccessMessage("Debt successfully cleared!");
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"An error occurred while clearing debt: {ex.Message}";
-            Console.WriteLine(ex); // Log for debugging
+            await DisplayErrorMessage("No transactions found to delete.");
         }
     }
+
+    // Get Transaction Type
+    private string GetTransactionRowClass(string transactionType) =>
+        transactionType switch
+        {
+            "Debit" => "table-danger",
+            "Credit" => "table-success",
+            _ => ""
+        };
 
     // Display Sucess Message
     private async Task DisplaySuccessMessage(string message)
     {
-        await Task.Run(() => Console.WriteLine(message)); // Simulate pop-up for now
+        successMessage = message;
+        StateHasChanged();
+        await Task.Delay(3000);
+        successMessage = string.Empty;
+        StateHasChanged();
     }
 
-    // Reset Debt Form
-    private void ResetForm()
+    // Display Error Message
+    private async Task DisplayErrorMessage(string message)
     {
-        debt = new AddDebt();
+        errorMessage = message;
+        StateHasChanged();
+        await Task.Delay(3000);
+        errorMessage = string.Empty;
+        StateHasChanged();
     }
 
-    // Calculate Totals
+    // Calcuate Totals
     private void CalculateTotals()
     {
         TotalInflow = transactions.Where(t => t.TransactionType == "Credit").Sum(t => t.Amount);
