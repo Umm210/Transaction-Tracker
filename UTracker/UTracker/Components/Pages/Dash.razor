@@ -1,103 +1,205 @@
 @page "/dashboard"
 @using UTracker.Models
 @inject UserService UserService
+@using MudBlazor
 
-<div class="dashboard">
-    <div class="dashboard-box">
-        <h2>@TotalCashInflows.ToString("C")</h2>
-        <p>Total Cash Inflows</p>
+<style>
+    body {
+        background-image: url('/assets/moneyy.jpg');
+    }
+</style>
+
+<h1>Welcome! Money Brings Happiness!</h1>
+<div class=" sidebyside">
+    <div class="dashboard-top-row">
+        <div class="dashboard-box">
+            <h2>@TotalBalance.ToString("C")</h2>
+            <p>Total Balance</p>
+        </div>
+        <div class="dashboard-box">
+            <h2>@TotalInflow.ToString("C")</h2>
+            <p>Total Inflow</p>
+        </div>
+        <div class="dashboard-box">
+            <h2>@TotalOutflow.ToString("C")</h2>
+            <p>Total Outflow</p>
+        </div>
+        <div class="dashboard-box">
+            <h2>@PendingDebt.ToString("C")</h2>
+            <p>Pending Debts</p>
+        </div>
     </div>
-    <div class="dashboard-box">
-        <h2>@TotalCashOutflows.ToString("C")</h2>
-        <p>Total Cash Outflows</p>
-    </div>
-    <div class="dashboard-box">
-        <h2>@ClearedDebt.ToString("C")</h2>
-        <p>Cleared Debts</p>
-    </div>
-    <div class="dashboard-box">
-        <h2>@RemainingBalance.ToString("C")</h2>
-        <p>Remaining Balance</p>
+
+    <div>
+        <div class="chart-container">
+            <div class="chart-item">
+                <MudChart ChartType="ChartType.Pie" InputData="@data" @bind-SelectedIndex="Index" InputLabels="@labels" Width="300px" Height="300px" />
+            </div>
+        </div>
     </div>
 </div>
 
-<!-- Debt Summary Section -->
-<div class="debt-summary">
-    <h3>Debt Summary</h3>
-    @if (debts.Any())
+<h3>Filter Transactions</h3>
+<div class="row">
+    <!-- Date Range -->
+    <div class="col-md-3">
+        <label for="filterDateRange">Date Range</label>
+        <div class="d-flex">
+            <InputDate id="filterStartDate" class="form-control me-2" @bind-Value="filterStartDate" />
+            <InputDate id="filterEndDate" class="form-control" @bind-Value="filterEndDate" />
+        </div>
+    </div>
+</div>
+<button class="btn btn-primary mt-3" @onclick="ApplyFilters">Apply Filters</button> <!-- Filter button -->
+<button class="btn btn-secondary mt-3 ms-2" @onclick="ClearFilters">Clear Filters</button> <!-- Clear filter button -->
+
+<hr />
+
+<!-- Pending Debt -->
+<div class="dashboard-bottom-row">
+    @if (filteredDebts.Any())
     {
+    <div class="pending-debt">
+        <h3>Pending Debt</h3>
+        @if (debts.Any())
+        {
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Debt Source</th>
+                        <th>Debt Amount</th>
+                        <th>Cleared Amount</th>
+                        <th>Due Date</th>
+                        <th>Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var debt in debts)
+                    {
+                        <tr>
+                            <td>@debt.DebtSource</td>
+                            <td>@debt.DebtAmount.ToString("C")</td>
+                            <td>@debt.ClearedAmount.ToString("C")</td>
+                            <td>@debt.DueDate.ToShortDateString()</td>
+                            <td>@debt.Notes</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <p>All the debt seems to be cleared.</p>
+        }
+    </div>
+    }
+    else
+    {
+    <p>No pending debts.</p>
+    }
+    @if (filteredTransactions.Any())
+    {
+    <!-- Top 5 Transactions Section -->
+    <div class="recent-transactions">
+        <h3>Recent Transactions</h3>
         <table class="table table-bordered">
             <thead>
                 <tr>
-                    <th>Debt Source</th>
-                    <th>Debt Amount</th>
-                    <th>Cleared Amount</th>
-                    <th>Due Date</th>
+                    <th>Amount</th>
+                    <th>Date</th>
+                    <th>Transaction Type</th>
                     <th>Notes</th>
                 </tr>
             </thead>
             <tbody>
-                @foreach (var debt in debts)
+                @foreach (var transaction in RecentTransactions)
                 {
                     <tr>
-                        <td>@debt.DebtSource</td>
-                        <td>@debt.DebtAmount.ToString("C")</td>
-                        <td>@debt.ClearedAmount.ToString("C")</td>
-                        <td>@debt.DueDate.ToShortDateString()</td>
-                        <td>@debt.Notes</td>
+                        <td>@transaction.Amount.ToString("C")</td>
+                        <td>@transaction.Date.ToShortDateString()</td>
+                        <td>@transaction.TransactionType</td>
+                        <td>@transaction.Notes</td>
                     </tr>
                 }
             </tbody>
         </table>
+    </div>
     }
     else
     {
-        <p>No debts available.</p>
+        <p>No transactions available.</p>
     }
 </div>
 
-<!-- Top 5 Transactions Section -->
-<div class="top-transactions">
-    <h3>Top 5 Transactions</h3>
-    <table class="table table-bordered">
-        <thead>
-            <tr>
-                <th>Amount</th>
-                <th>Date</th>
-                <th>Transaction Type</th>
-                <th>Notes</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var transaction in Top5Transactions)
-            {
-                <tr>
-                    <td>@transaction.Amount.ToString("C")</td>
-                    <td>@transaction.Date.ToShortDateString()</td>
-                    <td>@transaction.TransactionType</td>
-                    <td>@transaction.Notes</td>
-                </tr>
-            }
-        </tbody>
-    </table>
-</div>
-
-
 @code {
-    private decimal TotalCashInflows = 0;
-    private decimal TotalCashOutflows = 0;
-    private decimal ClearedDebt = 0;
-    private decimal RemainingBalance => TotalCashInflows - TotalCashOutflows - ClearedDebt;
-    private List<AddTransaction> transactions = new();
-    private List<AddDebt> debts = new();
-    private List<AddTransaction> Top5Transactions = new();
+    private decimal TotalInflow = 0;
+    private decimal TotalOutflow = 0;
+    private decimal PendingDebt = 0;
+    private decimal TotalBalance => TotalInflow - TotalOutflow;
+    private List<TransactionsDB> transactions = new();
+    private List<DebtDB> debts = new();
+    private List<TransactionsDB> RecentTransactions = new();
+    private DateTime? filterStartDate = null;
+    private DateTime? filterEndDate = null;
+    private List<TransactionsDB> filteredTransactions = new();
+    private List<DebtDB> filteredDebts = new();
+
+    private double[] data;
+    private string[] labels = { "Total Cash Inflows", "Total Cash Outflow", "Cleared Debt", "Remaining Balance" };
+    private int Index = -1;
+
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        PieChart();  // Initialize data
+    }
+
+    private void ClearFilters()
+    {
+        filterStartDate = null;
+        filterEndDate = null;
+        ApplyFilters();
+    }
+
+    // Apply Filters
+    private void ApplyFilters()
+    {
+        filteredTransactions = transactions
+            .Where(t =>
+                (!filterStartDate.HasValue || t.Date >= filterStartDate.Value) &&
+                (!filterEndDate.HasValue || t.Date <= filterEndDate.Value))
+            .ToList();
+
+        filteredDebts = debts
+        .Where(t =>
+            (!filterStartDate.HasValue || t.DueDate >= filterStartDate.Value) &&
+            (!filterEndDate.HasValue || t.DueDate <= filterEndDate.Value))
+        .ToList();
+    }
+
+    private void PieChart()
+    {
+        data = new double[]
+        {
+        (double)totalCashInflows,
+        (double)totalCashOutflows,
+        (double)clearedDebt,
+        (double)remainingBalance
+        };
+    }
+
+    private decimal totalCashInflows = 600m;
+    private decimal totalCashOutflows = 450m;
+    private decimal clearedDebt = 300m;
+    private decimal remainingBalance = 450m;
 
     protected override async Task OnInitializedAsync()
     {
         await LoadTransactions();
         await LoadDebts();
         CalculateTotals();
-        GetTop5Transactions();
+        GetRecent5Transactions();
     }
 
     private async Task LoadTransactions()
@@ -113,12 +215,12 @@
     private void CalculateTotals()
     {
         // Calculate totals
-        TotalCashInflows = transactions.Where(t => t.TransactionType == "Credit").Sum(t => t.Amount);
-        TotalCashOutflows = transactions.Where(t => t.TransactionType == "Debit").Sum(t => t.Amount);
-        ClearedDebt = debts.Sum(d => d.ClearedAmount);
+        TotalInflow = transactions.Where(t => t.TransactionType == "Credit").Sum(t => t.Amount);
+        TotalOutflow = transactions.Where(t => t.TransactionType == "Debit").Sum(t => t.Amount);
+        PendingDebt = debts.Sum(d => d.ClearedAmount);
     }
 
-    private void GetTop5Transactions()
+    private void GetRecent5Transactions()
     {
         // Get the 5 highest inflows
         var highestInflows = transactions.Where(t => t.TransactionType == "Credit")
@@ -133,7 +235,7 @@
                                          .ToList();
 
         // Combine both highest inflows and lowest outflows and take top 5
-        Top5Transactions = highestInflows.Concat(lowestOutflows)
+        RecentTransactions = highestInflows.Concat(lowestOutflows)
                                          .OrderByDescending(t => t.Amount)
                                          .Take(5)
                                          .ToList();
