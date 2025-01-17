@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -17,15 +17,18 @@ namespace UTracker.Models
         {
             _database = new SQLiteAsyncConnection(dbPath);
             _database.CreateTableAsync<User>().Wait();
-            _database.CreateTableAsync<AddTransaction>().Wait();
-            _database.CreateTableAsync<AddDebt>().Wait();
+            _database.CreateTableAsync<TransactionsDB>().Wait();
+            _database.CreateTableAsync<DebtDB>().Wait();
+            _database.CreateTableAsync<ClearedDB>().Wait();
         }
 
+        // Register User
         public Task<int> RegisterUser(User user)
         {
             return _database.InsertAsync(user);
         }
 
+        // Get User Data
         public Task<User> GetUser(string username, string password)
         {
             return _database.Table<User>()
@@ -33,32 +36,68 @@ namespace UTracker.Models
                 .FirstOrDefaultAsync();
         }
 
-        public Task<int> AddTransaction(AddTransaction transaction)  // New method for adding transactions
+        // Insert Transaction into the DB
+        public Task<int> AddTransaction(TransactionsDB transaction)  // New method for adding transactions
         {
             return _database.InsertAsync(transaction);
         }
 
-        public Task<List<AddTransaction>> GetAllTransactions()
+        // Get Transaction Data
+        public Task<List<TransactionsDB>> GetAllTransactions()
         {
-            return _database.Table<AddTransaction>().ToListAsync();
+            return _database.Table<TransactionsDB>().ToListAsync();
         }
 
+        // Deleting All Transactions
         public Task<int> DeleteAllTransactions()
         {
-            return _database.DeleteAllAsync<AddTransaction>();
+            return _database.DeleteAllAsync<TransactionsDB>();
+        }
+
+        // Delete Transaction
+        public Task<int> DeleteTransaction(TransactionsDB transaction)
+        {
+            return _database.DeleteAsync(transaction);
+        }
+
+        // Update Debt
+        public Task<int> UpdateDebt(DebtDB updatedDebt)
+        {
+            return _database.UpdateAsync(updatedDebt);
         }
 
 
-        public Task<int> AddDebt(AddDebt debt)  // Corrected method to add debt
+        // Insert Debt into DB
+        public Task<int> DebtDB(DebtDB debt)  // Corrected method to add debt
         {
             return _database.InsertAsync(debt);  // This should now insert AddDebt records
         }
 
-        public Task<List<AddDebt>> GetAllDebts()
+        // Get Debt Data
+        public Task<List<DebtDB>> GetAllDebts()
         {
-            return _database.Table<AddDebt>().ToListAsync();  // This fetches AddDebt records
+            return _database.Table<DebtDB>().ToListAsync();  // This fetches AddDebt records
         }
 
+        // Add Cleared Debt
+        public Task<int> AddClearedDebt(ClearedDB clearedDebt)
+        {
+            return _database.InsertAsync(clearedDebt);
+        }
+
+        // Delete Debt
+        public Task<int> DeleteDebt(int debtId)
+        {
+            return _database.Table<DebtDB>()
+                .Where(d => d.Id == debtId)
+                .DeleteAsync();
+        }
+
+        // Get Cleared Debt Data
+        public Task<List<ClearedDB>> GetAllClearedDebts()
+        {
+            return _database.Table<ClearedDB>().ToListAsync();
+        }
     }
 }
 
