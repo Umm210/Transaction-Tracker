@@ -1,7 +1,29 @@
-@page "/AddTransaction"
+@page "/Transaction"
 @using UTracker.Models
 @inject UserService UserService
 @inject NavigationManager NavigationManager
+
+<style>
+    body {
+        background-image: url('/assets/moneyy.jpg');
+    }
+</style>
+<h1>Transaction</h1>
+<!-- Transaction Amounts -->
+<div class="calculations">
+    <div class="dashboard-box">
+        <h2>@TotalBalance.ToString("C")</h2> <!-- Total Balance -->
+        <p>Total Balance</p>
+    </div>
+    <div class="dashboard-box">
+        <h2>@TotalInflow.ToString("C")</h2> <!-- Total Inflow -->
+        <p>Total Inflow</p>
+    </div>
+    <div class="dashboard-box">
+        <h2>@TotalOutflow.ToString("C")</h2> <!-- Total Outflow -->
+        <p>Total Outflow</p>
+    </div>
+</div>
 
 <!-- Search Bar -->
 <div class="form-group">
@@ -9,8 +31,10 @@
     <InputText id="search" class="form-control" @bind-Value="SearchTerm" />
 </div>
 
+<!-- Filter -->
 <h3>Filter Transactions</h3>
 <div class="row">
+    <!-- Type -->
     <div class="col-md-3">
         <label for="filterTransactionType">Transaction Type</label>
         <InputSelect id="filterTransactionType" class="form-control" @bind-Value="filterTransactionType">
@@ -20,19 +44,20 @@
         </InputSelect>
     </div>
 
+    <!-- Tag -->
     <div class="col-md-3">
-        <label for="filterCategory">Category</label>
-        <InputSelect id="filterCategory" class="form-control" @bind-Value="filterCategory">
+        <label for="filterTag">Tag</label>
+        <InputSelect id="filterTag" class="form-control" @bind-Value="filterTag">
             <option value="">All</option>
             <option value="Monthly">Monthly</option>
             <option value="Salary">Salary</option>
             <option value="Rent">Rent</option>
             <option value="Groceries">Groceries</option>
-            <option value="Self-care">Self-care</option>
             <option value="Other">Other</option>
         </InputSelect>
     </div>
 
+    <!-- Sort by title -->
     <div class="col-md-3">
         <label for="filterTitle">Sort by Title</label>
         <InputSelect id="filterTitle" class="form-control" @bind-Value="filterTitleOrder">
@@ -41,6 +66,7 @@
         </InputSelect>
     </div>
 
+    <!-- Date Range -->
     <div class="col-md-3">
         <label for="filterDateRange">Date Range</label>
         <div class="d-flex">
@@ -49,12 +75,13 @@
         </div>
     </div>
 </div>
-<button class="btn btn-primary mt-3" @onclick="ApplyFilters">Apply Filters</button>
-<button class="btn btn-secondary mt-3 ms-2" @onclick="ClearFilters">Clear Filters</button>
+<button class="btn btn-primary mt-3" @onclick="ApplyFilters">Apply Filters</button> <!-- Filter button -->
+<button class="btn btn-secondary mt-3 ms-2" @onclick="ClearFilters">Clear Filters</button> <!-- Clear filter button -->
 
 <hr />
 
-<h3>Transaction Summary</h3>
+<!-- Transaction History -->
+<h3>Transaction History</h3>
 @if (filteredTransactions.Any())
 {
     <table class="table table-bordered">
@@ -65,7 +92,9 @@
                 <th>Amount</th>
                 <th>Date</th>
                 <th>Category</th>
-                <th>Notes</th>
+                <th>Custom Tag</th>
+                <th>Note</th>
+                <th>Delete Transaction</th>
             </tr>
         </thead>
         <tbody>
@@ -77,7 +106,11 @@
                     <td>@trans.Amount</td>
                     <td>@trans.Date.ToShortDateString()</td>
                     <td>@trans.Category</td>
+                    <td>@trans.Custom</td>
                     <td>@trans.Notes</td>
+                    <td>
+                        <button class="btn btn-danger" @onclick="() => DeleteTransaction(trans)">Delete</button>
+                    </td>
                 </tr>
             }
         </tbody>
@@ -88,6 +121,7 @@ else
     <p>No transactions available.</p>
 }
 
+<!-- Add Transactions -->
 <h3>Add Transaction</h3>
 
 <div class="alert alert-success" style="display:@(string.IsNullOrEmpty(successMessage) ? "none" : "block")">
@@ -102,11 +136,13 @@ else
     <DataAnnotationsValidator />
     <ValidationSummary />
 
+    <!-- Title -->
     <div class="form-group">
         <label for="title">Title</label>
         <InputText id="title" class="form-control" @bind-Value="transaction.Title" />
     </div>
 
+    <!-- Type -->
     <div class="form-group">
         <label for="transactionType">Transaction Type</label>
         <InputSelect id="transactionType" class="form-control" @bind-Value="transaction.TransactionType">
@@ -116,20 +152,23 @@ else
         </InputSelect>
     </div>
 
+    <!-- Amount -->
     <div class="form-group">
         <label for="amount">Amount</label>
         <InputNumber id="amount" class="form-control" @bind-Value="transaction.Amount" />
     </div>
 
+    <!-- Date -->
     <div class="form-group">
         <label for="date">Date</label>
         <InputDate id="date" class="form-control" @bind-Value="transaction.Date" />
     </div>
 
+    <!-- Tag -->
     <div class="form-group">
-        <label for="category">Category</label>
+        <label for="tag">Tag</label>
         <InputSelect id="category" class="form-control" @bind-Value="transaction.Category">
-            <option value="Category">Category</option>
+            <option value="Tag">Tag</option>
             <option value="Monthly">Monthly</option>
             <option value="Salary">Salary</option>
             <option value="Rent">Rent</option>
@@ -139,11 +178,19 @@ else
         </InputSelect>
     </div>
 
+    <!-- Custom Tag -->
+    <div class="form-group">
+        <label for="custom">Custom Tag</label>
+        <InputText id="title" class="form-control" @bind-Value="transaction.Custom" />
+    </div>
+
+    <!-- Notes -->
     <div class="form-group">
         <label for="notes">Notes</label>
         <InputTextArea id="notes" class="form-control" @bind-Value="transaction.Notes" />
     </div>
 
+    <!-- Buttons -->
     <button type="submit" class="btn btn-primary">Add Transaction</button>
     <button type="button" class="btn btn-secondary" @onclick="ResetForm">Reset</button>
     <button type="button" class="btn btn-danger" @onclick="DeleteAllTransactions">Delete All Transactions</button>
@@ -154,17 +201,23 @@ else
 
 @code {
     private string filterTransactionType = string.Empty;
-    private string filterCategory = string.Empty;
+    private string filterTag = string.Empty;
     private string filterTitleOrder = "Ascending";
     private DateTime? filterStartDate = null;
     private DateTime? filterEndDate = null;
-    private List<AddTransaction> transactions = new();
-    private List<AddTransaction> filteredTransactions = new();
+    private List<TransactionsDB> transactions = new();
+    private List<TransactionsDB> filteredTransactions = new();
+    private TransactionsDB transaction = new TransactionsDB();
     private string successMessage = string.Empty;
     private string errorMessage = string.Empty;
-    private decimal totalCredit = 0;
-    private decimal totalDebit = 0;
+
+    private decimal TotalInflow = 0;
+    private decimal TotalOutflow = 0;
+    private decimal TotalBalance => TotalInflow - TotalOutflow;
+
     private string searchTerm;
+
+    // Search Bar Filtering
     private string SearchTerm
     {
         get => searchTerm;
@@ -175,11 +228,12 @@ else
         }
     }
 
+    // Transaction Filtering
     private void FilterTransactions()
     {
         if (string.IsNullOrWhiteSpace(searchTerm))
         {
-            filteredTransactions = new List<AddTransaction>(transactions); // Show all transactions
+            filteredTransactions = new List<TransactionsDB>(transactions); // Show all transactions
         }
         else
         {
@@ -189,11 +243,13 @@ else
         }
     }
 
+    // Load Transactions
     protected override async Task OnInitializedAsync()
     {
         await LoadTransactions();
     }
 
+    // Calculationg totals and applying filters
     private async Task LoadTransactions()
     {
         transactions = await UserService.GetAllTransactions();
@@ -201,12 +257,13 @@ else
         ApplyFilters();
     }
 
+    // Apply Filters
     private void ApplyFilters()
     {
         filteredTransactions = transactions
             .Where(t =>
                 (string.IsNullOrEmpty(filterTransactionType) || t.TransactionType == filterTransactionType) &&
-                (string.IsNullOrEmpty(filterCategory) || t.Category == filterCategory) &&
+                (string.IsNullOrEmpty(filterTag) || t.Category == filterTag) &&
                 (!filterStartDate.HasValue || t.Date >= filterStartDate.Value) &&
                 (!filterEndDate.HasValue || t.Date <= filterEndDate.Value))
             .ToList();
@@ -219,40 +276,70 @@ else
         };
     }
 
+    // Clear Filters
     private void ClearFilters()
     {
         filterTransactionType = string.Empty;
-        filterCategory = string.Empty;
+        filterTag = string.Empty;
         filterTitleOrder = "Ascending";
         filterStartDate = null;
         filterEndDate = null;
         ApplyFilters();
     }
 
+    // Handle Submits
     private async Task HandleValidSubmit()
     {
-        if (transaction.TransactionType == "Debit" && transaction.Amount > totalCredit)
+        if (transaction.TransactionType == "Debit" && transaction.Amount > TotalInflow)
         {
             await DisplayErrorMessage("Error: Debit amount exceeds available credit.");
             return;
         }
 
         if (transaction.TransactionType == "Debit")
-            totalDebit += transaction.Amount;
+            TotalOutflow += transaction.Amount;
         else if (transaction.TransactionType == "Credit")
-            totalCredit += transaction.Amount;
+            TotalInflow += transaction.Amount;
 
         await UserService.AddTransaction(transaction);
         await LoadTransactions();
-        transaction = new AddTransaction();
+        transaction = new TransactionsDB();
         await DisplaySuccessMessage("Transaction successfully added!");
     }
 
+    // Reset Form
     private void ResetForm()
     {
-        transaction = new AddTransaction();
+        transaction = new TransactionsDB();
     }
 
+    // Delete Single Transaction
+    private async Task DeleteTransaction(TransactionsDB transaction)
+    {
+        try
+        {
+            var result = await UserService.DeleteTransaction(transaction); // Delete from database
+
+            if (result > 0) // Check if the deletion was successful
+            {
+                transactions.Remove(transaction);
+                filteredTransactions.Remove(transaction); // Remove from the filtered list
+                CalculateTotals(); // Update totals after deletion
+                await DisplaySuccessMessage("Transaction deleted successfully!");
+            }
+            else
+            {
+                await DisplayErrorMessage("Transaction could not be deleted.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await DisplayErrorMessage($"Failed to delete transaction: {ex.Message}");
+            Console.WriteLine($"Exception: {ex}");
+        }
+    }
+
+    // Delete all transactions
     private async Task DeleteAllTransactions()
     {
         var result = await UserService.DeleteAllTransactions();
@@ -267,6 +354,7 @@ else
         }
     }
 
+    // Get Transaction Type
     private string GetTransactionRowClass(string transactionType) =>
         transactionType switch
         {
@@ -275,6 +363,7 @@ else
             _ => ""
         };
 
+    // Display Sucess Message
     private async Task DisplaySuccessMessage(string message)
     {
         successMessage = message;
@@ -284,6 +373,7 @@ else
         StateHasChanged();
     }
 
+    // Display Error Message
     private async Task DisplayErrorMessage(string message)
     {
         errorMessage = message;
@@ -293,14 +383,10 @@ else
         StateHasChanged();
     }
 
+    // Calcuate Totals
     private void CalculateTotals()
     {
-        totalCredit = transactions.Where(t => t.TransactionType == "Credit").Sum(t => t.Amount);
-        totalDebit = transactions.Where(t => t.TransactionType == "Debit").Sum(t => t.Amount);
+        TotalInflow = transactions.Where(t => t.TransactionType == "Credit").Sum(t => t.Amount);
+        TotalOutflow = transactions.Where(t => t.TransactionType == "Debit").Sum(t => t.Amount);
     }
-
-    private AddTransaction transaction = new AddTransaction();
 }
-
-
-
