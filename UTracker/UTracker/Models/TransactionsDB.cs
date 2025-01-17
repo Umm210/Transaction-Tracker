@@ -17,6 +17,7 @@ namespace UTracker.Models
         public DateTime Date { get; set; } // Transaction Date
         public string Category { get; set; } // Transaction Category
         public string Notes { get; set; } // Transaction Notes
+        public string Custom { get; set; } // Custom Category
     }
 }
 
