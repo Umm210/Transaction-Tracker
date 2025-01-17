@@ -1,0 +1,104 @@
+﻿/* Debt Amounts Section */
+.debt-calculations {
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    gap: 1rem; 
+    margin-bottom: 1.5rem; 
+}
+
+.dashboard-box {
+    background-color: darkolivegreen; 
+    color: white; 
+    padding: 1rem; 
+    text-align: center;
+    border-radius: 0.5rem; 
+    flex: 1; 
+}
+
+/* Debt History Table */
+.table {
+    width: 100%;
+    border-collapse: collapse; 
+    margin-top: 1.5rem; 
+}
+
+    .table th {
+        background-color: darkolivegreen; 
+        color: white; 
+        padding: 0.75rem; 
+        text-align: left; 
+    }
+
+    .table td {
+        background-color: white;
+        padding: 0.75rem; 
+        border: 1px solid #ddd; 
+    }
+
+.table-bordered {
+    border: 1px solid darkolivegreen; 
+}
+
+.btn-success {
+    background-color: #28a745;
+    color: white; 
+    border: none;
+    padding: 0.5rem 1rem; 
+    border-radius: 0.25rem; 
+}
+
+/* Add Debt Form */
+.add-debt-container {
+    background-color: darkolivegreen; 
+    color: white; 
+    padding: 2rem; 
+    border-radius: 0.5rem; 
+    margin-top: 2rem;
+}
+
+    .add-debt-container label {
+        color: white; 
+        font-weight: bold; 
+    }
+
+    .add-debt-container .form-control {
+        border: 1px solid #ccc; 
+        border-radius: 0.25rem; 
+        padding: 0.5rem; 
+        margin-bottom: 1rem; 
+    }
+
+    .add-debt-container button {
+        margin-right: 0.5rem; 
+    }
+
+/* Buttons */
+button {
+    border: none; 
+    padding: 0.75rem 1.5rem; 
+    border-radius: 0.25rem; 
+}
+
+    button.btn-primary {
+        background-color: #007bff; 
+        color: white; 
+    }
+
+    button.btn-secondary {
+        background-color: #6c757d; 
+        color: white; 
+    }
+
+/* General Styling */
+body {
+    font-family: Arial, sans-serif; 
+    margin: 0;
+    padding: 1rem; 
+    background-color: #f8f9fa; 
+}
+
+h3, h4 {
+    color: black; 
+    margin-bottom: 1rem; 
+}
