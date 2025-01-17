@@ -1,35 +1,46 @@
-﻿@page "/register"
+@page "/register"
 @using SQLite
 @using UTracker.Models;
 @inject UserService UserService
 @inject NavigationManager NavigationManager
 
-<h3>Register</h3>
+<style>
+    body {
+        background-image: url('/assets/moneyy.jpg');
+    }
+</style>
 
-<div>
-    <label>Username:</label>
-    <input @bind="Username" placeholder="Enter username" />
-</div>
-<div>
-    <label>Email:</label>
-    <input @bind="Email" type="email" placeholder="Enter email" />
-</div>
-<div>
-    <label>Password:</label>
-    <input @bind="Password" type="password" placeholder="Enter password" />
-</div>
-<div>
-    <label>Currency Type:</label>
-    <select @bind="CurrencyType">
-        <option value="USD">USD</option>
-        <option value="EUR">EUR</option>
-        <option value="GBP">GBP</option>
-    </select>
+<div class="register-container">
+    <div class="register-box">
+        <h3>Register</h3>
+
+        <div class="form-group">
+            <label>Username:</label>
+            <input @bind="Username" placeholder="Enter username" />
+        </div>
+        <div class="form-group">
+            <label>Email:</label>
+            <input @bind="Email" type="email" placeholder="Enter email" />
+        </div>
+        <div class="form-group">
+            <label>Password:</label>
+            <input @bind="Password" type="password" placeholder="Enter password" />
+        </div>
+        <div>
+            <label>Currency Type:</label>
+            <select @bind="CurrencyType">
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="GBP">GBP</option>
+            </select>
+        </div>
+        <button @onclick="RegisterUser" class="register-button">Register</button>
+
+        <p>Don't have an account? <a href="/" style="color: white">Login</a></p>
+    </div>
 </div>
 
-<button @onclick="RegisterUser">Register</button>
 
-<p>Don't have an account? <a href="/">Login</a></p>
 
 @if (SuccessMessage != null)
 {
@@ -47,6 +58,9 @@
     private string CurrencyType = "USD";
     private string? SuccessMessage;
     private string? ErrorMessage;
+    private string? TotalBalance;
+    private string? TotalInflow;
+    private string? TotalOutflow;
 
     private async Task RegisterUser()
     {
@@ -63,7 +77,10 @@
                     Username = Username,
                     Email = Email,
                     Password = Password,
-                    CurrencyType = CurrencyType
+                    CurrencyType = CurrencyType,
+                    TotalBalance = TotalBalance,
+                    TotalInflow = TotalInflow,
+                    TotalOutflow = TotalOutflow
                 };
 
             await UserService.RegisterUser(user);
