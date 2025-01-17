@@ -2,6 +2,7 @@
 using SQLite;
 using System.IO;
 using UTracker.Models;
+using MudBlazor.Services;
 
 namespace UTracker
 {
@@ -18,7 +19,7 @@ namespace UTracker
                 });
 
             builder.Services.AddMauiBlazorWebView();
-
+            builder.Services.AddMudServices();
 #if DEBUG
             builder.Services.AddBlazorWebViewDeveloperTools();
             builder.Logging.AddDebug();
