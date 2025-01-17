@@ -1,0 +1,83 @@
+﻿@page "/register"
+@using SQLite
+@using UTracker.Models;
+@inject UserService UserService
+@inject NavigationManager NavigationManager
+
+<h3>Register</h3>
+
+<div>
+    <label>Username:</label>
+    <input @bind="Username" placeholder="Enter username" />
+</div>
+<div>
+    <label>Email:</label>
+    <input @bind="Email" type="email" placeholder="Enter email" />
+</div>
+<div>
+    <label>Password:</label>
+    <input @bind="Password" type="password" placeholder="Enter password" />
+</div>
+<div>
+    <label>Currency Type:</label>
+    <select @bind="CurrencyType">
+        <option value="USD">USD</option>
+        <option value="EUR">EUR</option>
+        <option value="GBP">GBP</option>
+    </select>
+</div>
+
+<button @onclick="RegisterUser">Register</button>
+
+<p>Don't have an account? <a href="/">Login</a></p>
+
+@if (SuccessMessage != null)
+{
+    <p style="color: green;">@SuccessMessage</p>
+}
+@if (ErrorMessage != null)
+{
+    <p style="color: red;">@ErrorMessage</p>
+}
+
+@code {
+    private string Username;
+    private string Email;
+    private string Password;
+    private string CurrencyType = "USD";
+    private string? SuccessMessage;
+    private string? ErrorMessage;
+
+    private async Task RegisterUser()
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(Username) || string.IsNullOrWhiteSpace(Email) || string.IsNullOrWhiteSpace(Password))
+            {
+                ErrorMessage = "All fields are required!";
+                return;
+            }
+
+            var user = new User
+                {
+                    Username = Username,
+                    Email = Email,
+                    Password = Password,
+                    CurrencyType = CurrencyType
+                };
+
+            await UserService.RegisterUser(user);
+            SuccessMessage = "Registration successful!";
+            ErrorMessage = null;
+
+            // Redirect to login page after a short delay
+            await Task.Delay(2000);
+            NavigationManager.NavigateTo("/");
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Error: {ex.Message}";
+            SuccessMessage = null;
+        }
+    }
+}
